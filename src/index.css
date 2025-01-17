@@ -2,3 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+
+    html, main {
+        @apply m-0;
+    }
+
+    * {
+        @apply border-slate-700;
+    }
+}
