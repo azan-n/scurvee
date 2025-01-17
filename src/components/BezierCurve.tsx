@@ -5,13 +5,14 @@ interface Point {
   y: number;
 }
 
+const POINT_RADIUS = 10;
 const BezierCurve: React.FC = () => {
   // Control points and dragging state
   const [controlPoints, setControlPoints] = useState<Point[]>([
-    { x: 100, y: 500 },
+    { x: 10, y: 500 },
     { x: 200, y: 100 },
     { x: 400, y: 100 },
-    { x: 500, y: 500 },
+    { x: 790, y: 500 },
   ]);
 
   const [dragging, setDragging] = useState<number | null>(null); // Index of the point being dragged
@@ -40,11 +41,21 @@ const BezierCurve: React.FC = () => {
     const mouseX = e.nativeEvent.offsetX;
     const mouseY = e.nativeEvent.offsetY;
     const [offsetX, offsetY] = dragOffset!;
+
     const newControlPoints = [...controlPoints];
-    newControlPoints[dragging] = {
-      x: mouseX - offsetX,
-      y: mouseY - offsetY,
-    };
+    if (dragging === 0 || dragging === controlPoints.length - 1) {
+      // If dragging the first or last point, only update the y-coordinate
+      newControlPoints[dragging] = {
+        x: controlPoints[dragging].x, // Keep the x-coordinate fixed
+        y: mouseY - offsetY,          // Update the y-coordinate
+      };
+    } else {
+      // For all other points, update both x and y coordinates
+      newControlPoints[dragging] = {
+        x: mouseX - offsetX,
+        y: mouseY - offsetY,
+      };
+    }
     setControlPoints(newControlPoints); // Update control points
   };
 
@@ -63,17 +74,17 @@ const BezierCurve: React.FC = () => {
         {/* Bézier curve path */}
         <path
           d={generateBezierPath()}
-          stroke="white"
+          className="stroke-slate-400"
           fill="transparent"
           strokeWidth="2"
         />
-        
+
         {controlPoints.map((point, index) => (
           <circle
             key={index}
             cx={point.x}
             cy={point.y}
-            r={10}
+            r={POINT_RADIUS}
             className="fill-slate-300"
             onMouseDown={(e) => onMouseDown(e, index)}
           />
