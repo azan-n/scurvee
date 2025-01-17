@@ -1,10 +1,11 @@
 import { useState } from "react"
 import ColorThief, { RGBColor } from 'colorthief';
+import BezierCurve from "./components/BezierCurve";
 
 function App() {
   const [image, setImage] = useState<string | null>(null)
   const [dominantColors, setDominantColors] = useState<RGBColor[]>([])
-
+  // new Bezier().
   // Handle image upload
   const handleImageUpload = (event: any) => {
     const file = event.target.files[0]
@@ -44,7 +45,7 @@ function App() {
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
-                  className='absolute inset-0 opacity-0'  // Hide the default input
+                  className='inset-0 opacity-0'  // Hide the default input
                 />
                 <div className='bg-slate-700 cursor-pointer text-slate-200 py-3 px-6 rounded-lg hover:bg-slate-600 transition duration-300'>
                   Upload Image
@@ -61,6 +62,7 @@ function App() {
 
           {/* MIDI visualizations? */}
           <div className='border'>
+            <BezierCurve></BezierCurve>
           </div>
         </section>
       </div>
