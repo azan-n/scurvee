@@ -1,5 +1,4 @@
 import BezierCurve from "./components/BezierCurve";
-import ChucKPlayer from "./components/Chuck";
 
 function App() {
   return (
@@ -9,7 +8,7 @@ function App() {
         <section className='pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100vh_-_4rem)]'>
           {/* Upload image, show image, remove image */}
           <div className='border overflow-hidden flex items-center justify-center'>
-            <ChucKPlayer></ChucKPlayer>
+            
           </div>
 
           {/* MIDI visualizations? */}
