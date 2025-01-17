@@ -1,4 +1,6 @@
+import { Bezier } from "bezier-js";
 import { useState } from "react";
+import * as Tone from "tone";
 
 interface Point {
   x: number;
@@ -14,6 +16,10 @@ const BezierCurve: React.FC = () => {
     { x: 400, y: 100 },
     { x: 790, y: 500 },
   ]);
+
+  const generateBezier = () => {
+    return new Bezier(controlPoints);
+  }
 
   const [dragging, setDragging] = useState<number | null>(null); // Index of the point being dragged
   const [dragOffset, setDragOffset] = useState<[number, number] | null>(null); // Offset of mouse from control point
@@ -64,9 +70,10 @@ const BezierCurve: React.FC = () => {
   };
 
   return (
-    <div>
+    <>
+
       <svg
-        className=""
+        className="h-full w-full"
         viewBox="0 0 800 600"
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
@@ -105,9 +112,56 @@ const BezierCurve: React.FC = () => {
           );
         })}
       </svg>
-      <p>{JSON.stringify(controlPoints)}</p>
-    </div>
+      <MidiNotesPlayer points={generateBezier().getLUT(16)} />
+    </>
   );
 };
 
 export default BezierCurve;
+
+import React from 'react';
+
+export function MidiNotesPlayer({ points }: { points: Point[] }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // C Major scale frequencies (in Hz)
+  const notes = ["C#4", "D4", "F#3", "G#4"]
+
+  // Function to play the notes using Tone.js
+  const playNotes = async () => {
+    await Tone.start(); // Make sure Tone.js context starts
+    const synth = (new Tone.Synth().toDestination()); // Create a synth
+    
+    const loopA = new Tone.Loop((time) => {
+      synth.triggerAttackRelease(notes[notes.length - 1], "8n", time);
+    }, "4n").start(0);
+    // all loops start when the Transport is started
+    Tone.getTransport().start()
+    setIsPlaying(!isPlaying); // Toggle the play/pause state
+  };
+
+  // useEffect(() => {
+  //   if (isPlaying) {
+  //     generateRandomNotes(); // Generate random notes when playing starts
+  //     playNotes(); // Play the notes
+  //   }
+  // }, [isPlaying, noteArray]); // Re-run when playing state or note array changes
+
+  const togglePlay = async () => {
+    if (!isPlaying) {
+      await playNotes();
+    } else {
+      setIsPlaying(false);
+      Tone.getTransport().stop();
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={togglePlay}>
+        {isPlaying ? 'Stop Playing' : 'Start Playing'}
+      </button>
+    </div>
+  );
+};
+
