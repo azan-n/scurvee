@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { Bezier } from "bezier-js";
+import { useEffect, useState } from "react";
+import * as Tone from "tone";
 
 interface Point {
   x: number;
@@ -14,6 +16,10 @@ const BezierCurve: React.FC = () => {
     { x: 400, y: 100 },
     { x: 790, y: 500 },
   ]);
+
+  const generateBezier = () => {
+    return new Bezier(controlPoints);
+  }
 
   const [dragging, setDragging] = useState<number | null>(null); // Index of the point being dragged
   const [dragOffset, setDragOffset] = useState<[number, number] | null>(null); // Offset of mouse from control point
@@ -63,10 +69,17 @@ const BezierCurve: React.FC = () => {
     setDragging(null); // Stop dragging
   };
 
+  const [bezier, setBezier] = useState<Bezier>(generateBezier());
+
+  useEffect(() => {
+    setBezier(generateBezier())
+  }, [controlPoints])
+
   return (
-    <div>
+    <>
+
       <svg
-        className=""
+        className="h-full w-full"
         viewBox="0 0 800 600"
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
@@ -105,9 +118,69 @@ const BezierCurve: React.FC = () => {
           );
         })}
       </svg>
-      <p>{JSON.stringify(controlPoints)}</p>
-    </div>
+      <MidiNotesPlayer bezier={bezier} />
+    </>
   );
 };
 
 export default BezierCurve;
+
+import React from 'react';
+
+export function MidiNotesPlayer({ bezier }: { bezier: Bezier }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [loop, setLoop] = useState<Tone.Loop>();
+  const [synth, setSynth] = useState<Tone.Synth>();
+
+  // Function to play the notes using Tone.js
+  const playNotes = () => {
+    Tone.start().then(() => {
+      const synth = new Tone.Synth().toDestination();
+      setSynth(synth);
+
+      const loop = new Tone.Loop(getLoopCallback(bezier, synth), "4n");
+      loop.start()
+
+      setLoop(loop)
+      // all loops start when the Transport is started
+      Tone.getTransport().start()
+      setIsPlaying(true); // Toggle the play/pause state
+    });
+  };
+
+  useEffect(() => {
+    if (loop && isPlaying && synth) {
+      loop.callback = getLoopCallback(bezier, synth);
+    }
+  }, [bezier])
+
+  const togglePlay = async () => {
+    if (!isPlaying) {
+      playNotes();
+    } else {
+      synth?.dispose()
+      loop?.dispose()
+      Tone.getTransport().stop();
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div>
+      <button className="font-mono" onClick={togglePlay}>
+        {isPlaying ? 'stop' : 'start'}
+      </button>
+    </div>
+  );
+};
+
+function getLoopCallback(bezier: Bezier, synth: Tone.Synth<Tone.SynthOptions>): ((time: Tone.Unit.Seconds) => void) {
+  return (time) => {
+    const lut = bezier.getLUT(4);
+    synth?.triggerAttackRelease(lut[randomInt(0, lut.length - 1)].y, "8n", time);
+  };
+}
+
+function randomInt(min: number, max: number) { // min and max included 
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
