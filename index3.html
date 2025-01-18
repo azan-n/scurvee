@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Bezier Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control label {
+            margin-bottom: 5px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>MIDI Bezier Curve Tool</h1>
+    <canvas id="bezierCanvas" width="600" height="400"></canvas>
+
+    <div class="controls">
+        <div class="control">
+            <label for="octaves">Octaves:</label>
+            <input id="octaves" type="range" min="1" max="5" value="1">
+            <span id="octavesValue">1</span>
+        </div>
+        <div class="control">
+            <label for="clipLength">Clip Length:</label>
+            <input id="clipLength" type="range" min="4" max="16" value="4" step="4">
+            <span id="clipLengthValue">4</span>
+        </div>
+        
+        <div class="control">
+            <label for="steps">Steps:</label>
+            <input id="steps" type="range" min="50" max="500" value="150">
+            <span id="stepsValue">150</span>
+        </div>
+        <div class="control">
+            <label for="startY">Start Y:</label>
+            <input id="startY" type="range" min="0" max="127" value="78">
+            <span id="startYValue">78</span>
+        </div>
+        <div class="control">
+            <label for="endY">End Y:</label>
+            <input id="endY" type="range" min="0" max="127" value="50">
+            <span id="endYValue">50</span>
+        </div>
+        <div class="control">
+            <label for="control1X">Control 1 X:</label>
+            <input id="control1X" type="range" min="0" max="600" value="200">
+            <span id="control1XValue">200</span>
+        </div>
+        <div class="control">
+            <label for="control1Y">Control 1 Y:</label>
+            <input id="control1Y" type="range" min="0" max="400" value="50">
+            <span id="control1YValue">50</span>
+        </div>
+        <div class="control">
+            <label for="control2X">Control 2 X:</label>
+            <input id="control2X" type="range" min="0" max="600" value="400">
+            <span id="control2XValue">400</span>
+        </div>
+        <div class="control">
+            <label for="control2Y">Control 2 Y:</label>
+            <input id="control2Y" type="range" min="0" max="400" value="350">
+            <span id="control2YValue">350</span>
+        </div>
+        <div class="control">
+            <label for="key">Key:</label>
+            <select id="key">
+                <option value="C">C</option>
+                <option value="C#">C#</option>
+                <option value="D">D</option>
+                <option value="D#">D#</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="F#">F#</option>
+                <option value="G">G</option>
+                <option value="G#">G#</option>
+                <option value="A">A</option>
+                <option value="A#">A#</option>
+                <option value="B">B</option>
+            </select>
+        </div>
+        <div class="control">
+            <label for="scale">Scale:</label>
+            <select id="scale">
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+                <option value="mixolydian">Mixolydian</option>
+                <option value="dorian">Dorian</option>
+                <option value="triads">Triads</option>
+                <option value="minor7thchord">Minor 7th Chord</option>
+                <option value="perfectFourths">Perfect Fourths</option>
+                <option value="superUltraHyperMegaMetaLydian">Super Ultra Hyper Mega Meta Lydian</option>
+            </select>
+        </div>
+    </div>
+
+    <button id="generateMidi">Generate MIDI</button>
+
+    <script>
+        const canvas = document.getElementById('bezierCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const octavesInput = document.getElementById('octaves');
+        const clipLengthInput = document.getElementById('clipLength');
+        const stepsInput = document.getElementById('steps');
+        const startYInput = document.getElementById('startY');
+        const endYInput = document.getElementById('endY');
+        const control1XInput = document.getElementById('control1X');
+        const control1YInput = document.getElementById('control1Y');
+        const control2XInput = document.getElementById('control2X');
+        const control2YInput = document.getElementById('control2Y');
+        const keyInput = document.getElementById('key');
+        const scaleInput = document.getElementById('scale');
+        const generateButton = document.getElementById('generateMidi');
+
+        const octavesValue = document.getElementById('octavesValue');
+        const clipLengthValue = document.getElementById('clipLengthValue')
+        const stepsValue = document.getElementById('stepsValue');
+        const startYValue = document.getElementById('startYValue');
+        const endYValue = document.getElementById('endYValue');
+        const control1XValue = document.getElementById('control1XValue');
+        const control1YValue = document.getElementById('control1YValue');
+        const control2XValue = document.getElementById('control2XValue');
+        const control2YValue = document.getElementById('control2YValue');
+
+        const controlPoints = {
+            start: { x: 50, y: parseInt(startYInput.value) },
+            control1: { x: parseInt(control1XInput.value), y: parseInt(control1YInput.value) },
+            control2: { x: parseInt(control2XInput.value), y: parseInt(control2YInput.value) },
+            end: { x: 550, y: parseInt(endYInput.value) }
+        };
+
+        function drawCurve() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw control lines
+            ctx.strokeStyle = '#ccc';
+            ctx.beginPath();
+            ctx.moveTo(controlPoints.start.x, controlPoints.start.y);
+            ctx.lineTo(controlPoints.control1.x, controlPoints.control1.y);
+            ctx.lineTo(controlPoints.control2.x, controlPoints.control2.y);
+            ctx.lineTo(controlPoints.end.x, controlPoints.end.y);
+            ctx.stroke();
+
+            // Draw Bezier curve
+            ctx.strokeStyle = '#000';
+            ctx.beginPath();
+            ctx.moveTo(controlPoints.start.x, controlPoints.start.y);
+            ctx.bezierCurveTo(
+                controlPoints.control1.x, controlPoints.control1.y,
+                controlPoints.control2.x, controlPoints.control2.y,
+                controlPoints.end.x, controlPoints.end.y
+            );
+            ctx.stroke();
+
+            // Draw control points
+            ctx.fillStyle = '#f00';
+            for (const point in controlPoints) {
+                const { x, y } = controlPoints[point];
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        function updateControlPoints() {
+            controlPoints.start.y = parseInt(startYInput.value);
+            controlPoints.end.y = parseInt(endYInput.value);
+            controlPoints.control1.x = parseInt(control1XInput.value);
+            controlPoints.control1.y = parseInt(control1YInput.value);
+            controlPoints.control2.x = parseInt(control2XInput.value);
+            controlPoints.control2.y = parseInt(control2YInput.value);
+            drawCurve();
+        }
+
+        octavesInput.addEventListener('input', () => {
+            octavesValue.textContent = octavesInput.value;
+        });
+
+        clipLengthInput.addEventListener('input', () => {
+            clipLengthValue.textContent = clipLengthInput.value;
+        });
+
+
+        stepsInput.addEventListener('input', () => {
+            stepsValue.textContent = stepsInput.value;
+        });
+
+        startYInput.addEventListener('input', () => {
+            startYValue.textContent = startYInput.value;
+            updateControlPoints();
+        });
+
+        endYInput.addEventListener('input', () => {
+            endYValue.textContent = endYInput.value;
+            updateControlPoints();
+        });
+
+        control1XInput.addEventListener('input', () => {
+            control1XValue.textContent = control1XInput.value;
+            updateControlPoints();
+        });
+
+        control1YInput.addEventListener('input', () => {
+            control1YValue.textContent = control1YInput.value;
+            updateControlPoints();
+        });
+
+        control2XInput.addEventListener('input', () => {
+            control2XValue.textContent = control2XInput.value;
+            updateControlPoints();
+        });
+
+        control2YInput.addEventListener('input', () => {
+            control2YValue.textContent = control2YInput.value;
+            updateControlPoints();
+        });
+
+        drawCurve();
+
+        // Generate MIDI file
+    </script>
+
+    <script type = "module"  src="https://unpkg.com/@tonejs/midi">
+        window.Midi = Midi; // Expose Midi globally
+    </script>
+
+    <script type = "module">
+        // Expose Bezier globally
+        import { Bezier } from './bezier.js'
+        window.Bezier = Bezier
+
+    </script>
+    <script type = "module">
+
+        // import pkg from '@tonejs/midi';
+        // const { Midi } = pkg;
+        generateButton.addEventListener('click', () => {
+            const options = {
+                octaves: parseInt(octavesInput.value),
+                clipLength: parseInt(clipLengthInput.value),
+                steps: parseInt(stepsInput.value),
+                key: keyInput.value,
+                scale: scaleInput.value,
+                bezierCurve: controlPoints
+            };
+
+            const scales = {
+                major: [0, 2, 4, 5, 7, 9, 11],
+                minor: [0, 2, 3, 5, 7, 8, 10],
+                mixolydian: [0, 2, 4, 5, 7, 9, 10],
+                dorian: [0, 2, 3, 5, 7, 9, 10],
+                triads: [0, 4, 7],
+                minor7thchord: [0, 3, 7, 10],
+                perfectFourths: [0, 5, 10],
+                superUltraHyperMegaMetaLydian: [0, 2, 4, 5, 7, 9, 11, 13], // Example pattern
+            };
+
+            function quantizeToScale(note, scaleArray) {
+                console.log(parseInt(note, "int note"))
+                // return scaleArray.reduce((prev, curr) =>
+                //     Math.abs(curr - note) < Math.abs(prev - note) ? curr : prev
+                // );
+                for(let i = note; i <= 127; i++){
+                    if (scaleArray.includes(i))
+                        return i;
+                }
+            }
+        
+            let selectedScale = scales['major']; // Default scale
+        
+            // Update scale based on dropdown selection
+            document.getElementById('scale').addEventListener('change', (event) => {
+                const scaleKey = event.target.value;
+                selectedScale = scales[scaleKey];
+                console.log(`Selected scale: ${scaleKey}`, selectedScale);
+            });
+
+            function generateNoteArray(root, scale) {
+                const intervals = scales[scale];
+                const notes = [];
+                for (let i = root; i <= 127; i++) {
+                    if (intervals.includes((i - root) % 12)) {
+                        notes.push(i);
+                    }
+                }
+                return notes;
+            } 
+        
+            // Generate MIDI
+            const midi = new window.Midi();
+            const track = midi.addTrack();
+            const steps = options.steps;
+            const noteDuration = options.clipLength / steps; // Assuming 16 is the clip length
+            const curvePointsX = [];
+            const curvePointsY = [];
+            const bezier = new window.Bezier(
+                controlPoints.start.x, controlPoints.start.y,
+                controlPoints.control1.x, controlPoints.control1.y,
+                controlPoints.control2.x, controlPoints.control2.y,
+                options.clipLength, controlPoints.end.y
+            );
+        
+            for (let t = 0; t <= 1; t += 1 / steps) {
+                const point = bezier.get(t);
+                curvePointsX.push(point.x);
+                curvePointsY.push(point.y);
+            }
+        
+            const scaleNotes = generateNoteArray(0, options.scale); // Assuming rootNote = 0
+            const quantizedNotes = curvePointsY.map((value) =>
+                quantizeToScale(Math.round(value), scaleNotes)
+            );
+        
+
+
+            for (let i = 0; i < steps; i++) {
+                track.addNote({
+                    midi: quantizedNotes[i],
+                    time: i * noteDuration,
+                    duration: noteDuration,
+                    velocity: 0.8
+                });
+            }
+        
+            // Convert to binary and create a download link
+            const midiData = midi.toArray();
+            const blob = new Blob([midiData], { type: "audio/midi" });
+            const url = URL.createObjectURL(blob);
+        
+            const downloadLink = document.createElement("a");
+            downloadLink.href = url;
+            downloadLink.download = "generated-midi.mid";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        
+            console.log('MIDI file generated and downloaded.');
+        });
+        
+
+    </script>
+</body>
+</html>
