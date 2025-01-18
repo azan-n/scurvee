@@ -1,6 +1,12 @@
 import { Bezier } from "bezier-js";
 import { useState } from "react";
-import * as Tone from "tone";
+// import Midi from "./MidiControls";
+import { MidiControls } from "./MidiControls";
+
+import synthPlaybackTest from "./SynthPlaybackTest";
+import { MidiNotesPlayer } from "./MidiNotesPlayer";
+
+
 
 interface Point {
   x: number;
@@ -9,6 +15,12 @@ interface Point {
 
 const POINT_RADIUS = 10;
 const BezierCurve: React.FC = () => {
+
+  const [midiParams, setMidiParams] = useState({
+    key: "C",
+    scale: "major",
+    octaveOffset: 0,
+  });
   // Control points and dragging state
   const [controlPoints, setControlPoints] = useState<Point[]>([
     { x: 10, y: 500 },
@@ -16,6 +28,8 @@ const BezierCurve: React.FC = () => {
     { x: 400, y: 100 },
     { x: 790, y: 500 },
   ]);
+
+  const [generatedNotes, setGeneratedNotes] = useState<Number[]>([]);
 
   const generateBezier = () => {
     return new Bezier(controlPoints);
@@ -69,6 +83,30 @@ const BezierCurve: React.FC = () => {
     setDragging(null); // Stop dragging
   };
 
+  const handleMidiParamUpdate = (key: string, value: any) => {
+    setMidiParams((prev) => ({ ...prev, [key]: value }));
+    updateMidiLogic(key, value); // Call the JS logic
+  };
+
+  const updateMidiLogic = (key: string, value: any) => {
+    console.log(`Updating ${key} to`, value);
+    synthPlaybackTest.updateMidiOptions(key, value); // Call the function from JS
+    const notes: Number[] = synthPlaybackTest.regenerateMidi();    
+    console.log("Generated Notes:", notes); // Debugging
+
+    setGeneratedNotes(notes); // Update the state with the notes
+  };
+
+  const handleDownload = () => {
+    const midiUrl = synthPlaybackTest.regenerateMidi();
+    const link = document.createElement("a");
+    link.href = midiUrl;
+    link.download = `pattern_${Math.floor(Math.random() * 100000)}.mid`;
+    link.click();
+    URL.revokeObjectURL(midiUrl);
+  };
+
+
   return (
     <>
 
@@ -112,56 +150,14 @@ const BezierCurve: React.FC = () => {
           );
         })}
       </svg>
-      <MidiNotesPlayer points={generateBezier().getLUT(16)} />
+      return <MidiControls onUpdate={handleUpdate} onDownload={handleDownload} />;
+      {/* <BezierCurve /> */}
+      <MidiNotesPlayer notes={generatedNotes || []} />
     </>
   );
 };
 
 export default BezierCurve;
 
-import React from 'react';
 
-export function MidiNotesPlayer({ points }: { points: Point[] }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  // C Major scale frequencies (in Hz)
-  const notes = ["C#4", "D4", "F#3", "G#4"]
-
-  // Function to play the notes using Tone.js
-  const playNotes = async () => {
-    await Tone.start(); // Make sure Tone.js context starts
-    const synth = (new Tone.Synth().toDestination()); // Create a synth
-    
-    const loopA = new Tone.Loop((time) => {
-      synth.triggerAttackRelease(notes[notes.length - 1], "8n", time);
-    }, "4n").start(0);
-    // all loops start when the Transport is started
-    Tone.getTransport().start()
-    setIsPlaying(!isPlaying); // Toggle the play/pause state
-  };
-
-  // useEffect(() => {
-  //   if (isPlaying) {
-  //     generateRandomNotes(); // Generate random notes when playing starts
-  //     playNotes(); // Play the notes
-  //   }
-  // }, [isPlaying, noteArray]); // Re-run when playing state or note array changes
-
-  const togglePlay = async () => {
-    if (!isPlaying) {
-      await playNotes();
-    } else {
-      setIsPlaying(false);
-      Tone.getTransport().stop();
-    }
-  };
-
-  return (
-    <div>
-      <button onClick={togglePlay}>
-        {isPlaying ? 'Stop Playing' : 'Start Playing'}
-      </button>
-    </div>
-  );
-};
 

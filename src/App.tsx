@@ -7,8 +7,8 @@ function App() {
         <h1 className='font-mono'>scurvee</h1>
         <section className='pt-4 h-[calc(100vh_-_4rem)]'>
           {/* MIDI visualizations? */}
+          <BezierCurve/>
           <div className='border h-full'>
-            <BezierCurve></BezierCurve>
           </div>
         </section>
       </div>
